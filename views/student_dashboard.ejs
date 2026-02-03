@@ -4,26 +4,121 @@
 <head>
     <meta charset="UTF-8">
     <title>Student Dashboard</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f7f6;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+
+        p[style] {
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+
+        a {
+            text-decoration: none;
+            color: #360989;
+            font-weight: bold;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+
+        h2 {
+            border-left: 5px solid #007bff;
+            padding-left: 10px;
+            margin-top: 30px;
+            color: #444;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background-color: white;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            border-radius: 5px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+
+        th {
+            background-color: #343a40;
+            color: white;
+            text-transform: uppercase;
+            font-size: 0.85rem;
+            padding: 12px 15px;
+            text-align: left;
+            letter-spacing: 0.05em;
+        }
+
+        td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #ddd;
+            color: #555;
+        }
+
+
+        button {
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background-color 0.2s, transform 0.1s;
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        form[action="/student/register"] button {
+            background-color: rgb(4, 179, 4);
+            color: white;
+        }
+        form[action="/student/register"] button:hover {
+            background-color: rgb(2, 98, 2);
+        }
+
+        form[action="/student/drop"] button {
+            background-color: rgb(183, 32, 32);
+            color: white;
+        }
+        form[action="/student/drop"] button:hover {
+            background-color: rgb(154, 20, 20);
+        }
+
+        div[style*="color: red"] {
+            background-color: #f8d7da;
+            color: #721c24 !important;
+            border: 1px solid #f5c6cb;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+        }
+    </style>
 </head>
 
 <body>
-    <p>
-    <h1><%= user.full_name %></h1>
-    <a href="/logout">Logout</a>
+    <p style="display: flex; justify-content: space-between; align-items: center; background-color: cyan; padding: 10px;">
+        <span>Welcome, <%= user.full_name %></span>
+        <a href="/logout">Logout</a>
     </p>
+
+    <h2>Total Credits: <%= total_credits %></h2>
     <hr>
 
-    <!-- TODO: Display Registered Courses -->
-    <!-- Show: Course ID, Name, Credits, Slot -->
-    <!-- Action: Drop Button -->
     <h2>Registered Courses</h2>
-    <table>
+    <table >
         <tr>
-            <th>courseid</th>
-            <th>coursename</th>
+            <th>course_id</th>
+            <th>course_name</th>
             <th>credits</th>
             <th>slot</th>
-            <th>slot</th>
+            <th>instructor_name</th> 
             <th>action</th>
         </tr>
         <% registered_courses.forEach(course => { %>
@@ -53,17 +148,14 @@
         </div>
     <% } %>
 
-    <!-- TODO: Display Available Courses -->
-    <!-- Show: Course ID, Name, Credits, Slot, Capacity -->
-    <!-- Action: Register Button -->
     <h2>Available Courses</h2>
     <table>
         <tr>
-            <th>courseid</th>
-            <th>coursename</th>
+            <th>course_id</th>
+            <th>course_name</th>
             <th>credits</th>
             <th>slot</th>
-            <th>instructor</th>
+            <th>instructor_name</th>
             <th>capacity</th>
             <th>action</th>
         </tr>
