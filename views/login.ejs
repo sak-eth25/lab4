@@ -1,28 +1,31 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
-    <title>Login - Course Registration</title>
+    <title>Login</title>
 </head>
-
 <body>
-    <h1>Course Registration Portal</h1>
-
-    <!-- TODO: Implement Login Form -->
-    <!-- Inputs: username, password -->
-    <!-- Method: POST, Action: /login -->
+    <h1>Login</h1>
 
     <form action="/login" method="POST">
-        <label>Username:</label>
-        <input type="text" name="username" required>
-        <br><br>
-        <label>Password:</label>
-        <input type="password" name="password" required>
-        <br><br>
+        <div>
+            <label for="username">Username:</label>
+            <input type="text" name="username" required>
+        </div>
+        <br>
+        <div>
+            <label for="password">Password:</label>
+            <input type="password" name="password" required>
+        </div>
+        <br>
+
+        <% if (locals.error) { %>
+            <div>
+                <%= error %>
+            </div>
+        <% } %>
+
         <button type="submit">Login</button>
     </form>
-
 </body>
-
 </html>

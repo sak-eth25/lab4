@@ -37,17 +37,19 @@ app.use(session({
 
 function isAuthenticated(req, res, next) {
     if (req.session.user) {
-        return next();
+        next();
+    } else {
+        res.redirect('/login');
     }
-    res.redirect('/login');
 }
 
 
 function isInstructor(req, res, next) {
-    if (req.session.user && req.session.user.role === 'Instructor') {
-        return next();
+    if (req.session.user && req.session.user.role === 'instructor') {
+        next();
+    } else {
+        res.status(403).send('Forbidden');
     }
-    res.status(403).send('Access denied');
 }
 
 
@@ -80,6 +82,13 @@ app.get('/', (req, res) => {
 
 
 app.get('/login', (req, res) => {
+    if (req.session.user) {
+        if (req.session.user.role === 'student') {
+            return res.redirect('/student/dashboard');
+        } else if (req.session.user.role === 'instructor') {
+            return res.redirect('/instructor/dashboard');
+        }
+    }
     res.render('login');
 });
 
@@ -88,47 +97,30 @@ app.get('/login', (req, res) => {
 // 2. Set session user
 // 3. Redirect to appropriate dashboard based on role
 app.post('/login', async (req, res) => {
-    const { username, password } = req.body;
-    const pool = getPool();
-
-    try {
-        const result = await pool.query(
-            `SELECT user_id, role, full_name, password
-             FROM Users
-             WHERE username = $1`,
-            [username]
-        );
-
-        if (result.rows.length === 0) {
-            return res.render('login', { error: 'Invalid username or password' });
-        }
-
-        const user = result.rows[0];
-
-        // Plaintext password check (toy app only)
-        if (user.password !== password) {
-            return res.render('login', { error: 'Invalid username or password' });
-        }
-
-        // Save minimal user info in session
-        req.session.user = {
-            user_id: user.user_id,
-            role: user.role,
-            full_name: user.full_name
-        };
-
-        // Role-based redirect
-        if (user.role === 'Student') {
-            return res.redirect('/student/dashboard');
-        } else if (user.role === 'Instructor') {
-            return res.redirect('/instructor/dashboard');
-        } else {
-            return res.render('login', { error: 'Unknown user role' });
-        }
-
-    } catch (err) {
+    const usname=req.body.username;
+   const pswd=req.body.password;
+   try{
+    const dbres=await pool.query("select user_id,password,role,full_name from users where username = $1",[usname]);
+    if (dbres.rows.length===0){
+        return res.render("login",{error:"Invalid Login Credentials"});
+    }
+    const user=dbres.rows[0];
+    if(user.password!== pswd){
+        return res.render("login",{error:"Invalid login password or userid" });
+    }
+    req.session.user = {
+        user_id:user.user_id,role:user.role
+    };
+    if(user.role === "student"){
+       return res.redirect("/student/dashboard");   
+    }
+    if(user.role ==="instructor"){
+        return res.redirect("/instructor/dashboard");
+    }
+    }
+    catch(err){
         console.error(err);
-        res.render('login', { error: 'Server error. Please try again.' });
+        res.render("login",{error: "something is wrong"});
     }
 });
 
@@ -143,7 +135,24 @@ app.get('/logout', (req, res) => {
 // 2. Fetch all available courses (exclude registered ones)
 // 3. Calculate total credits
 app.get('/student/dashboard', isAuthenticated, async (req, res) => {
+    const userId = req.session.user.user_id;
 
+
+    const reg_courses_query = "SELECT courses.* FROM courses JOIN registrations ON courses.course_id = registrations.course_id WHERE registrations.student_id = $1";
+    const available_courses_query = "SELECT * FROM courses WHERE course_id NOT IN (SELECT course_id FROM registrations WHERE student_id = $1)";
+    const total_credits_query = "SELECT SUM(c.credits) AS total_credits FROM courses c JOIN registrations r ON c.course_id = r.course_id WHERE r.student_id = $1";
+
+    const registered_courses = (await pool.query(reg_courses_query, [userId])).rows;
+    const available_courses = (await pool.query(available_courses_query, [userId])).rows;
+    const total_credits_result = (await pool.query(total_credits_query, [userId])).rows;//can be empty
+    const total_credits = total_credits_result[0].total_credits || 0;
+
+    res.render('student_dashboard', {
+        user: req.session.user,
+        registered_courses: registered_courses,
+        available_courses: available_courses,
+        total_credits: total_credits
+    });
 });
 
 // TODO: Implement registration logic
