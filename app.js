@@ -100,13 +100,13 @@ app.post('/login', async (req, res) => {
     const usname=req.body.username;
    const pswd=req.body.password;
    try{
-    const dbres=await pool.query("select user_id,password,role,full_name from users where username = $1",[usname]);
+    const dbres=await pool.query("select user_id,password,role from users where username = $1",[usname]);
     if (dbres.rows.length===0){
         return res.render("login",{error:"Invalid Login Credentials"});
     }
     const user=dbres.rows[0];
     if(user.password!== pswd){
-        return res.render("login",{error:"Invalid login password or userid" });
+        return res.render("login",{error:"Invalid login password" });
     }
     req.session.user = {
         user_id:user.user_id,role:user.role
@@ -138,8 +138,8 @@ app.get('/student/dashboard', isAuthenticated, async (req, res) => {
     const userId = req.session.user.user_id;
 
     const name_query = "SELECT full_name FROM users WHERE user_id = $1";
-    const reg_courses_query = "SELECT courses.* FROM courses JOIN registrations ON courses.course_id = registrations.course_id WHERE registrations.student_id = $1";
-    const available_courses_query = "SELECT * FROM courses WHERE course_id NOT IN (SELECT course_id FROM registrations WHERE student_id = $1)";
+    const reg_courses_query = "SELECT courses.*,users.full_name AS instructor FROM courses JOIN registrations ON courses.course_id = registrations.course_id JOIN users ON courses.instructor_id = users.user_id WHERE registrations.student_id = $1";
+    const available_courses_query = "SELECT courses.*,users.full_name AS instructor FROM courses JOIN users ON courses.instructor_id = users.user_id WHERE course_id NOT IN (SELECT course_id FROM registrations WHERE student_id = $1)";
     const total_credits_query = "SELECT SUM(c.credits) AS total_credits FROM courses c JOIN registrations r ON c.course_id = r.course_id WHERE r.student_id = $1";
 
     const name = (await pool.query(name_query, [userId])).rows[0].full_name;
@@ -148,9 +148,13 @@ app.get('/student/dashboard', isAuthenticated, async (req, res) => {
     const total_credits_result = (await pool.query(total_credits_query, [userId])).rows;//can be empty
     const total_credits = total_credits_result[0].total_credits || 0;
 
+    const error = req.session.error;
+    req.session.error = null;
+
     res.render('student_dashboard', {
         user: { ...req.session.user, full_name: name },
         registered_courses: registered_courses,
+        error: error,
         available_courses: available_courses,
         total_credits: total_credits
     });
@@ -170,7 +174,8 @@ app.post('/student/register', isAuthenticated, async (req, res) => {
     const course_check_query = "SELECT * FROM courses WHERE course_id = $1";
     const course_check_result = await pool.query(course_check_query, [courseId]);
     if (course_check_result.rows.length === 0) {
-        return res.status(400).send("Course does not exist.");
+        req.session.error = "Course does not exist.";
+        return res.redirect('/student/dashboard');
     }
 
     const slot_credits_query = "SELECT slot, credits FROM courses WHERE course_id = $1";
@@ -181,7 +186,8 @@ app.post('/student/register', isAuthenticated, async (req, res) => {
     const slots_taken_query = "SELECT c.slot FROM courses c JOIN registrations r ON c.course_id = r.course_id WHERE r.student_id = $1";
     const slots_taken = await pool.query(slots_taken_query, [userId]);
     if(slots_taken.rows.some(row => row.slot === slot)) {
-        return res.status(400).send("Can't take this course, slot clash detected.");
+        req.session.error = "Can't take this course, slot clash detected.";
+        return res.redirect('/student/dashboard');
     }
 
     //3. Check Credit Limit (Max 24 credits)
@@ -189,7 +195,22 @@ app.post('/student/register', isAuthenticated, async (req, res) => {
     const total_credits_result = await pool.query(total_credits_query, [userId]);//can be empty
     const total_credits = Number(total_credits_result.rows[0].total_credits) || 0;
     if(total_credits + credits > 24) {
-        return res.status(400).send("Can't take this course, credit limit exceeded.");
+        req.session.error = "Can't take this course, credit limit exceeded.";
+        return res.redirect('/student/dashboard');
+    }
+
+    //4. Check Course Capacity
+    const capacity_query = "SELECT capacity FROM courses WHERE course_id = $1";
+    const capacity_result = await pool.query(capacity_query, [courseId]);
+    const capacity = capacity_result.rows[0].capacity;
+
+    const enrolled_count_query = "SELECT COUNT(*) AS enrolled_count FROM registrations WHERE course_id = $1";
+    const enrolled_count_result = await pool.query(enrolled_count_query, [courseId]);
+    const enrolled_count = Number(enrolled_count_result.rows[0].enrolled_count);
+
+    if(enrolled_count >= capacity) {
+        req.session.error = "Can't take this course, course capacity reached.";
+        return res.redirect('/student/dashboard');
     }
 
     //5. Insert into Registrations table
@@ -217,11 +238,14 @@ app.post('/student/drop', isAuthenticated, async (req, res) => {
 app.get('/instructor/dashboard', isAuthenticated, isInstructor, async (req, res) => {
     const userID = req.session.user.user_id;
 
+    const name_query = "SELECT full_name FROM users WHERE user_id = $1";
+    const name = (await pool.query(name_query, [userID])).rows[0].full_name;
+
     const courses_teaching_query = "SELECT * FROM courses WHERE instructor_id = $1";
     const courses_teaching = (await pool.query(courses_teaching_query, [userID])).rows;
 
     res.render('instructor_dashboard', {
-        user: req.session.user,
+        user: { ...req.session.user, full_name: name },
         courses: courses_teaching
     });
 

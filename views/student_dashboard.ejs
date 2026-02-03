@@ -23,14 +23,16 @@
             <th>coursename</th>
             <th>credits</th>
             <th>slot</th>
+            <th>slot</th>
             <th>action</th>
         </tr>
         <% registered_courses.forEach(course => { %>
         <tr>
             <td><%= course.course_id %></td>
-            <td><%= course.name %></td>
+            <td><%= course.course_name %></td>
             <td><%= course.credits %></td>
             <td><%= course.slot %></td>
+            <td><%= course.instructor %></td>
             <td>
                 <form method="POST" action="/student/drop">
                     <input type="hidden" name="course_id" value="<%= course.course_id %>">
@@ -43,7 +45,13 @@
     </table>
 
 
+    <hr>
 
+    <% if (typeof error !== 'undefined' && error) { %>
+        <div style="color: red;">
+            <strong>Error:</strong> <%= error %>
+        </div>
+    <% } %>
 
     <!-- TODO: Display Available Courses -->
     <!-- Show: Course ID, Name, Credits, Slot, Capacity -->
@@ -55,15 +63,17 @@
             <th>coursename</th>
             <th>credits</th>
             <th>slot</th>
+            <th>instructor</th>
             <th>capacity</th>
             <th>action</th>
         </tr>
         <% available_courses.forEach(course => { %>
         <tr>
             <td><%= course.course_id %></td>
-            <td><%= course.name %></td>
+            <td><%= course.course_name %></td>
             <td><%= course.credits %></td>
             <td><%= course.slot %></td>
+            <td><%= course.instructor %></td>
             <td><%= course.capacity %></td>
             <td>
                 <form method="POST" action="/student/register">
